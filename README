@@ -1,0 +1,25 @@
+Here is my solution in Java for the Quora programming challenge:
+
+To compile it, you need JDK >1.5 and just do "javac Quora.java"
+To run it, do "java Quora < inputFile"
+On my machine, for the sample input, it runs in under 1 second and returns 301716 (run it >10 times to take the average as the JVM usually warms up during the first run).
+
+Although the code is only about 100 lines long, I made tons of optimizations and thus the code is hard to understand. I basically do a simple recursive search and use various pruning heuristics and state-saving bithacks to optimize for time:
+
+Pruning heuristics:
+1. While exploring if you reach a position where there are 2 neighbors with 1 exits each, don't explore that branch anymore.
+2. While exploring, do a floodFill from the end and check if there's any cell the floodFill did not cover. This means there's a blocked off region, don't explore anymore.
+
+Bithacks:
+1. Store position (x,y) in a single byte (first 4-bits for x and and last 4 bits for y). This assumes that we would not be given sides bigger than 2^4.
+2. Store current state (visited/not-visited) in a single 64-bit long. This assumes that we would not be given grids with more than 64 cells.
+
+Java Tricks:
+1) Using try-finally was surprisingly 3x faster than doing it the "right way" by having bunch of iffs.
+2) Using all static methods called from the main method
+
+Future optimizations:
+1) Flood-fills initially are almost always futile as we have not covered enough of the grid yet. Schedule floodFills "smartly" and with probability directly proportional to how filled the grid is.
+2) Instead of only storing state as visited-not-visited, also store current position as part of the state to reduce more recursive calls.
+3) Invent your own custom hashtable instead of using the SDK one e.g. Trove's LongToIntHashMap
+4) Rearchitect the code to be non recursive - simulate recursion/DFS using a single global stack array. Similar idea how I simulated BFS in floodFill using single global array.
