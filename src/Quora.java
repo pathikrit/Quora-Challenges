@@ -1,9 +1,11 @@
+import java.util.HashMap;
+
 public class Quora {
 
 	static final int NULL = -1, OPEN = 0, BLOCKED = 1, START = 2, END = 3,
 			XSHIFT = 3, YMASK = (1 << XSHIFT) - 1,  //SHIFT needs to be increased if X or Y need more than SHIFT bits
 			D[] = new int[]{1, -1, -(1 << XSHIFT), 1 << XSHIFT}, //deltas for Left, Right, Up, Down
-			CACHE_SIZE = 1 << 20;
+			STATE_CACHE_SIZE = 1 << 20, POSITION_CACHE_SIZE = 1 << 4;
 
 	static final boolean VISITABLE = true;
 
@@ -15,7 +17,7 @@ public class Quora {
 
 	static long state; // use 64-bits to represent upto 64 cells, always make sure you use 1L when shifting, for large cases use BitSet
 
-	static java.util.HashMap<Long, Integer> cache = new java.util.HashMap<Long, Integer>(CACHE_SIZE);
+	static HashMap<Long, HashMap<Integer, Integer>> cache = new HashMap<Long, HashMap<Integer, Integer>>(STATE_CACHE_SIZE);
 
 	static int compute(final int p) {
 		matrix[p] = !VISITABLE;
@@ -24,44 +26,49 @@ public class Quora {
 		state |= (1L << stateBit);
 
 		try {
-			Integer ans = cache.get(state);
-			if (ans != null)
-				return ans;
-
-			ans = 0;
-
-			if (numOfExits(end) == 0 || !isFloodFillable()) {
-				cache.put(state, ans = remaining == 1 ? 1 : 0);
-				return ans;
+			{
+				HashMap<Integer, Integer> positionCache = cache.get(state);
+				Integer cachedValue = positionCache == null ? null : positionCache.get(p);
+				if (cachedValue != null)
+					return cachedValue;
 			}
+
+			if (numOfExits(end) == 0 || !isFloodFillable())
+				return cacheAndReturn(state, p, remaining == 1 ? 1 : 0);
 
 			int onlyChoice = NULL;
 
 			for (int d : D) {
 				if (matrix[d += p] && d != end && numOfExits(d) == 1) {
-					if (onlyChoice != NULL) {
-						cache.put(state, ans);
-						return ans;
-					}
+					if (onlyChoice != NULL)
+						return cacheAndReturn(state, p, 0);
 					onlyChoice = d;
 				}
 			}
 
 			if (onlyChoice == NULL) {
+				int paths = 0;
 				for (int d : D)
 					if (matrix[d += p])
-						ans += compute(d);
-				//cache.put(state, ans); //TODO: State should be visited+position and not just visited.
-			} else {
-				cache.put(state, ans = compute(onlyChoice));
+						paths += compute(d);
+				return cacheAndReturn(state, p, paths);
 			}
 
-			return ans;
+			return cacheAndReturn(state, p, compute(onlyChoice));
+
 		} finally {
 			matrix[p] = VISITABLE;
 			state &= ~(1L << stateBit);
 			remaining++;
 		}
+	}
+
+	static int cacheAndReturn(final long state, final int p, final int ans) {
+		HashMap<Integer, Integer> positionCache = cache.get(state);
+		if (positionCache == null)
+			cache.put(state, positionCache = new HashMap<Integer, Integer>(POSITION_CACHE_SIZE));
+		positionCache.put(p, ans);
+		return ans;
 	}
 
 	static int queue[];
